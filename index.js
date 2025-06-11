@@ -4,37 +4,44 @@ import simpleGit from "simple-git";
 import random from "random";
 
 const path = "./data.json";
+const git = simpleGit();
 
-const markCommit = (x, y) => {
-  const date = moment()
-    .subtract(1, "y")
-    .add(1, "d")
-    .add(x, "w")
-    .add(y, "d")
-    .format();
+// Years you want to cover
+const startDate = moment("2023-01-01");
+const endDate = moment("2025-06-10");
 
-  const data = {
-    date: date,
-  };
+const dates = [];
+
+// Collect dates between 2023 and 2025 randomly
+while (startDate.isSameOrBefore(endDate)) {
+  const shouldCommitToday = random.boolean(); // 50% chance
+  if (shouldCommitToday) {
+    const commitsToday = random.int(1, 4); // 1 to 4 commits
+    for (let i = 0; i < commitsToday; i++) {
+      dates.push(startDate.clone());
+    }
+  }
+  startDate.add(1, "day");
+}
+
+// Sort dates to commit in order
+dates.sort((a, b) => a.toDate() - b.toDate());
+
+const commitAtIndex = (index) => {
+  if (index >= dates.length) {
+    git.push();
+    return;
+  }
+
+  const date = dates[index].toISOString();
+  const data = { date };
 
   jsonfile.writeFile(path, data, () => {
-    simpleGit().add([path]).commit(date, { "--date": date }).push();
+    git.add([path])
+      .commit(`Commit on ${date}`, { "--date": date })
+      .then(() => commitAtIndex(index + 1));
   });
 };
 
-const makeCommits = (n) => {
-  if(n===0) return simpleGit().push();
-  const x = random.int(0, 54);
-  const y = random.int(0, 6);
-  const date = moment().subtract(1, "y").add(1, "d").add(x, "w").add(y, "d").format();
-
-  const data = {
-    date: date,
-  };
-  console.log(date);
-  jsonfile.writeFile(path, data, () => {
-    simpleGit().add([path]).commit(date, { "--date": date },makeCommits.bind(this,--n));
-  });
-};
-
-makeCommits(100);
+// Start committing
+commitAtIndex(0);
